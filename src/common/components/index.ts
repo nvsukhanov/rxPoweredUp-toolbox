@@ -1,1 +1,2 @@
-export * from './Hub-not-connected-notification.tsx';
+export * from './Hub-not-connected-notification';
+export * from './Bluetooth-unavailable-notification';

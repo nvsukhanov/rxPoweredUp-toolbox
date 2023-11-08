@@ -8,6 +8,7 @@ import { BluetoothAvailability, NAVIGATOR } from '../types';
 import { RouterOutlet } from './Router-outlet';
 import { HubConnectionState, HubConnectionStateModel } from './hub-connection-state-model';
 import { BluetoothAvailabilityStateModel } from './bluetooth-availability-state-model.ts';
+import { BluetoothUnavailableNotification } from '../common';
 
 export function App(
     _: unknown,
@@ -18,15 +19,19 @@ export function App(
     const [ connectionState, setConnectionState ] = useState<HubConnectionStateModel>({ connectionState: HubConnectionState.Disconnected });
 
     if (bluetoothState.availability === BluetoothAvailability.Unknown) {
-        navigator.bluetooth.getAvailability().then((isAvailable) => {
-            return isAvailable ? navigator.bluetooth : null;
-        }).then((bluetooth: Bluetooth | null) => {
-            if (bluetooth) {
-                setBluetooth({ availability: BluetoothAvailability.Available, bluetooth });
-            } else {
-                setBluetooth({ availability: BluetoothAvailability.Unavailable });
-            }
-        });
+        if (navigator.bluetooth === undefined) {
+            setBluetooth({ availability: BluetoothAvailability.Unavailable });
+        } else {
+            navigator.bluetooth.getAvailability().then((isAvailable) => {
+                return isAvailable ? navigator.bluetooth : null;
+            }).then((bluetooth: Bluetooth | null) => {
+                if (bluetooth) {
+                    setBluetooth({ availability: BluetoothAvailability.Available, bluetooth });
+                } else {
+                    setBluetooth({ availability: BluetoothAvailability.Unavailable });
+                }
+            });
+        }
     }
 
     function connect(bluetooth: Bluetooth): void {
@@ -77,7 +82,7 @@ export function App(
         case BluetoothAvailability.Unavailable:
             return (
                 <main className={styles.main}>
-                    Bluetooth is not available.
+                    <BluetoothUnavailableNotification/>
                 </main>
             );
     }
