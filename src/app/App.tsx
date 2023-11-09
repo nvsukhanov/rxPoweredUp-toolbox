@@ -1,61 +1,66 @@
-import { ReactElement, useState } from 'react';
+import { ReactElement, useCallback, useEffect, useState } from 'react';
 import { container } from 'tsyringe';
-import { connectHub } from 'rxpoweredup';
+import { IHub, connectHub } from 'rxpoweredup';
 
 import styles from './App.module.scss';
 import { Nav } from '../nav';
-import { BluetoothAvailability, NAVIGATOR } from '../types';
+import { BluetoothAvailability, HubConnectionState, NAVIGATOR } from '../types';
 import { RouterOutlet } from './Router-outlet';
-import { HubConnectionState, HubConnectionStateModel } from './hub-connection-state-model';
-import { BluetoothAvailabilityStateModel } from './bluetooth-availability-state-model.ts';
 import { BluetoothUnavailableNotification } from '../common';
+import { useHubStore } from '../store';
 
 export function App(
     _: unknown,
     __: unknown,
     navigator: Navigator = container.resolve(NAVIGATOR),
 ): ReactElement {
-    const [ bluetoothState, setBluetooth ] = useState<BluetoothAvailabilityStateModel>({ availability: BluetoothAvailability.Unknown });
-    const [ connectionState, setConnectionState ] = useState<HubConnectionStateModel>({ connectionState: HubConnectionState.Disconnected });
+    const [ hub, setHub ] = useState<IHub | undefined>(undefined);
+    const isBluetoothAvailable = useHubStore((state) => state.isBluetoothAvailable);
+    const setBluetoothAvailability = useHubStore((state) => state.setBluetoothAvailability);
+    const hubConnection = useHubStore((state) => state.hubConnection);
+    const setHubConnectionState = useHubStore((state) => state.setHubConnection);
 
-    if (bluetoothState.availability === BluetoothAvailability.Unknown) {
-        if (navigator.bluetooth === undefined) {
-            setBluetooth({ availability: BluetoothAvailability.Unavailable });
-        } else {
-            navigator.bluetooth.getAvailability().then((isAvailable) => {
-                return isAvailable ? navigator.bluetooth : null;
-            }).then((bluetooth: Bluetooth | null) => {
-                if (bluetooth) {
-                    setBluetooth({ availability: BluetoothAvailability.Available, bluetooth });
-                } else {
-                    setBluetooth({ availability: BluetoothAvailability.Unavailable });
-                }
-            });
+    useEffect(() => {
+        if (!isBluetoothAvailable) {
+            if (navigator.bluetooth === undefined) {
+                setBluetoothAvailability(false);
+            } else {
+                navigator.bluetooth.getAvailability().then((isAvailable) => {
+                    setBluetoothAvailability(isAvailable);
+                });
+            }
         }
-    }
+    }, [ isBluetoothAvailable, setBluetoothAvailability, navigator.bluetooth ]);
 
-    function connect(bluetooth: Bluetooth): void {
-        if (connectionState.connectionState !== HubConnectionState.Disconnected) {
+    const connect = useCallback(() => {
+        if (hubConnection !== HubConnectionState.Disconnected) {
             throw new Error('Cannot connect when already connected or connecting.');
         }
-        setConnectionState({ connectionState: HubConnectionState.Connecting });
-        connectHub(bluetooth).subscribe({
-            next: (hub) => setConnectionState({ connectionState: HubConnectionState.Connected, hub }),
-            error: () => setConnectionState({ connectionState: HubConnectionState.Disconnected }),
+        setHub(undefined);
+        setHubConnectionState(HubConnectionState.Connecting);
+        connectHub(navigator.bluetooth).subscribe({
+            next: (connectedHub) => {
+                setHub(connectedHub);
+                setHubConnectionState(HubConnectionState.Connected);
+            },
+            error: () => setHubConnectionState(HubConnectionState.Disconnected),
         });
-    }
+    }, [ hubConnection, setHubConnectionState, setHub, navigator.bluetooth ]);
 
-    function disconnect(): void {
-        if (connectionState.connectionState !== HubConnectionState.Connected) {
+    const disconnect = useCallback(() => {
+        if (hubConnection !== HubConnectionState.Connected) {
             throw new Error('Cannot disconnect when not connected.');
         }
-        setConnectionState({ connectionState: HubConnectionState.Disconnecting, hub: connectionState.hub });
-        connectionState.hub.disconnect().subscribe({
-            complete: () => setConnectionState({ connectionState: HubConnectionState.Disconnected }),
+        setHubConnectionState(HubConnectionState.Disconnecting);
+        hub?.disconnect().subscribe({
+            complete: () => {
+                setHubConnectionState(HubConnectionState.Disconnected);
+                setHub(undefined);
+            },
         });
-    }
+    }, [ hubConnection, setHubConnectionState, setHub, hub ]);
 
-    switch (bluetoothState.availability) {
+    switch (isBluetoothAvailable) {
         case BluetoothAvailability.Unknown:
             return (
                 <main className={styles.main}>
@@ -66,16 +71,13 @@ export function App(
             return (
                 <>
                     <header>
-                        <Nav bluetooth={bluetoothState.bluetooth}
-                             isConnected={connectionState.connectionState === HubConnectionState.Connected}
-                             isConnecting={connectionState.connectionState === HubConnectionState.Connecting}
-                             isDisconnecting={connectionState.connectionState === HubConnectionState.Disconnecting}
-                             onConnect={(): void => connect(bluetoothState.bluetooth)}
+                        <Nav connectionState={hubConnection}
+                             onConnect={(): void => connect()}
                              onDisconnect={(): void => disconnect()}
                         />
                     </header>
                     <main className={styles.main}>
-                        <RouterOutlet hubConnectionState={connectionState}/>
+                        <RouterOutlet hub={hub}/>
                     </main>
                 </>
             );

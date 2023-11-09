@@ -3,45 +3,47 @@ import { NavLink } from 'react-router-dom';
 
 import styles from './Nav.module.scss';
 import { ROUTES } from '../common';
+import { HubConnectionState } from '../types';
 
 export function Nav(
     props: {
-        bluetooth: Bluetooth;
-        isConnected: boolean;
-        isConnecting: boolean;
-        isDisconnecting: boolean;
+        connectionState: HubConnectionState;
         onConnect: () => void;
         onDisconnect: () => void;
     }
 ): ReactElement {
     const navItems: ReactElement[] = [];
-    if (props.isConnected) {
+    if ([ HubConnectionState.Connected, HubConnectionState.Disconnecting ].includes(props.connectionState)) {
         navItems.push(
-            <button onClick={props.onDisconnect} disabled={props.isDisconnecting}>Disconnect</button>,
+            <button onClick={props.onDisconnect}
+                    disabled={props.connectionState !== HubConnectionState.Connected}
+            >Disconnect</button>,
             <NavLink to={ROUTES.hubProperties}
-                     className={(isActive): string | undefined => isActive ? styles.activeLinkItem : undefined}
+                     className={({ isActive }): string => isActive ? styles.activeLinkItem : ''}
             >
                 Hub properties
             </NavLink>,
             <NavLink to={ROUTES.ports}
-                     className={(isActive): string | undefined => isActive ? styles.activeLinkItem : undefined}
+                     className={({ isActive }): string => isActive ? styles.activeLinkItem : ''}
             >
                 Ports
             </NavLink>,
             <NavLink to={ROUTES.motors}
-                     className={(isActive): string | undefined => isActive ? styles.activeLinkItem : undefined}
+                     className={({ isActive }): string => isActive ? styles.activeLinkItem : ''}
             >
                 Motors
             </NavLink>,
             <NavLink to={ROUTES.sensors}
-                     className={(isActive): string | undefined => isActive ? styles.activeLinkItem : undefined}
+                     className={({ isActive }): string => isActive ? styles.activeLinkItem : ''}
             >
-                Ports
+                Sensors
             </NavLink>
         );
     } else {
         navItems.push(
-            <button onClick={props.onConnect} disabled={props.isConnecting}>Connect</button>
+            <button onClick={props.onConnect}
+                    disabled={props.connectionState === HubConnectionState.Connecting}
+            >Connect</button>
         );
     }
 
