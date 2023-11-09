@@ -1,17 +1,15 @@
-import { JSX } from 'react';
+import { ReactElement } from 'react';
 import { Routes } from 'react-router-dom';
+import { IHub } from 'rxpoweredup';
 
 import { buildRoutes } from './routes-factory';
-import { HubConnectionState, HubConnectionStateModel } from './hub-connection-state-model';
 
 export function RouterOutlet(
     props: {
-        hubConnectionState: HubConnectionStateModel;
+        hub: IHub | undefined;
     }
-): JSX.Element {
-    const routes = buildRoutes(
-        props.hubConnectionState.connectionState === HubConnectionState.Connected ? props.hubConnectionState.hub : undefined
-    );
+): ReactElement {
+    const routes = buildRoutes(props.hub);
     return (
         <Routes>
             {routes}
