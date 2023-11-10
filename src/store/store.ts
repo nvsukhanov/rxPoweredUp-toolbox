@@ -4,6 +4,7 @@ import {
     AttachedIOAttachVirtualInboundMessage,
     AttachedIODetachInboundMessage,
     AttachedIoAttachInboundMessage,
+    HubType,
     IOType,
     PortModeInboundMessage,
     PortModeInformationInboundMessage,
@@ -53,9 +54,20 @@ export type PortModeInfoState = {
     };
 };
 
+export type HubPropertiesState = {
+    batteryLevel?: number;
+    rssiLevel?: number;
+    buttonState?: boolean;
+    advertisingName?: string;
+    systemTypeId?: HubType;
+    manufacturerName?: string;
+    primaryMacAddress?: string;
+};
+
 export type HubStore = {
     isBluetoothAvailable: BluetoothAvailability;
     hubConnection: HubConnectionState;
+    hubProperties: HubPropertiesState;
     ports: {
         [portId in number]: PhysicalPortState | VirtualPortState;
     };
@@ -67,6 +79,7 @@ export type HubStore = {
     };
     setBluetoothAvailability: (bluetoothAvailable: boolean) => void;
     setHubConnection: (hubConnectionState: HubConnectionState) => void;
+    setHubProperty<K extends keyof HubPropertiesState>(key: K, value: HubPropertiesState[K]): void;
     processIoAttachMessage(message: AttachedIoAttachInboundMessage | AttachedIOAttachVirtualInboundMessage): void;
     processIoDetachMessage(message: AttachedIODetachInboundMessage): void;
     processPortModeMessage(message: PortModeInboundMessage): void;
@@ -80,9 +93,21 @@ export type HubStore = {
 export const useHubStore = create<HubStore>((set) => ({
     isBluetoothAvailable: BluetoothAvailability.Unknown,
     hubConnection: HubConnectionState.Disconnected,
+    hubProperties: {},
     ports: {},
     portModes: {},
     portModeInfo: {},
+    setHubProperty<K extends keyof HubPropertiesState>(key: K, value: HubPropertiesState[K]): void {
+        set((state) => {
+            return {
+                ...state,
+                hubProperties: {
+                    ...state.hubProperties,
+                    [key]: value
+                }
+            };
+        });
+    },
     processIoAttachMessage(
         message: AttachedIoAttachInboundMessage | AttachedIOAttachVirtualInboundMessage
     ): void {

@@ -15,9 +15,9 @@ export function PortsList(
         onPortModeIdRawValueReadRequest: (portId: number, modeId: number) => void;
     }
 ): ReactElement {
-    const physicalPortElements: ReactElement[] = props.physicalPorts.map((port: PhysicalPortState, idx: number) => {
+    const physicalPortElements: ReactElement[] = props.physicalPorts.map((port: PhysicalPortState) => {
         return (
-            <li key={idx}>
+            <li key={port.portId}>
                 <PhysicalPort port={port}
                               onHandlePortModesRequest={(): void => props.onPortModesRequest(port.portId)}
                               portModeData={props.portModeDataRecord[port.portId]}
