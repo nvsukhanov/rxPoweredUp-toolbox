@@ -10,7 +10,8 @@ import {
     PortModeInboundMessage,
     PortModeInformationInboundMessage,
     PortModeInformationType,
-    RawMessage
+    RawMessage,
+    TiltData
 } from 'rxpoweredup';
 
 import { BluetoothAvailability, HubConnectionState } from '../types';
@@ -95,6 +96,11 @@ export type HubStore = {
     portModeInfo: {
         [hash in string]: PortModeInfoState;
     };
+    sensorsData: {
+        voltage?: number;
+        temperature?: number;
+        tilt?: TiltData;
+    };
     setBluetoothAvailability: (bluetoothAvailable: boolean) => void;
     setHubConnection: (hubConnectionState: HubConnectionState) => void;
     setHubProperty<K extends keyof HubPropertiesState>(key: K, value: HubPropertiesState[K]): void;
@@ -105,6 +111,9 @@ export type HubStore = {
     processPortModeInformationRequestError(portId: number, modeId: number, infoType: PortModeInformationType, error: Error): void;
     processPortRawValue(portId: number, modeId: number, rawValue: number[]): void;
     addMessagesLogEntry(direction: MessageDirection, message: RawMessage<MessageType>, id: string): void;
+    updateSensorVoltage(voltage?: number): void;
+    updateSensorTemperature(temperature?: number): void;
+    updateSensorTilt(tilt?: TiltData): void;
     onHubDisconnect(): void;
 };
 
@@ -128,6 +137,7 @@ export const useHubStore = create<HubStore>((set) => ({
             };
         });
     },
+    sensorsData: {},
     processIoAttachMessage(
         message: AttachedIoAttachInboundMessage | AttachedIOAttachVirtualInboundMessage
     ): void {
@@ -290,6 +300,39 @@ export const useHubStore = create<HubStore>((set) => ({
             return {
                 ...state,
                 messagesLog
+            };
+        });
+    },
+    updateSensorVoltage(voltage?: number): void {
+        set((state) => {
+            return {
+                ...state,
+                sensorsData: {
+                    ...state.sensorsData,
+                    voltage
+                }
+            };
+        });
+    },
+    updateSensorTemperature(temperature?: number): void {
+        set((state) => {
+            return {
+                ...state,
+                sensorsData: {
+                    ...state.sensorsData,
+                    temperature
+                }
+            };
+        });
+    },
+    updateSensorTilt(tilt?: TiltData): void {
+        set((state) => {
+            return {
+                ...state,
+                sensorsData: {
+                    ...state.sensorsData,
+                    tilt
+                }
             };
         });
     },
