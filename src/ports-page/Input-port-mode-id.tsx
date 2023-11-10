@@ -42,9 +42,9 @@ export function InputPortModeId(
                     : <span>--</span>
                 }</dt>
                 {
-                    PORT_MODE_INFORMATION_TYPES_LIST.map((infoType, idx) => {
+                    PORT_MODE_INFORMATION_TYPES_LIST.map((infoType) => {
                         return (
-                            <Fragment key={idx}>
+                            <Fragment key={infoType}>
                                 <dd>{PortModeInformationType[infoType]}</dd>
                                 <dt>{
                                     props.data?.modeInfo[infoType]
