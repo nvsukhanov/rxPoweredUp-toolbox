@@ -3,6 +3,7 @@ import { MessageType } from 'rxpoweredup';
 
 import { MessageDirection, MessageLogEntry } from '../store';
 import { numberToHex } from '../common';
+import styles from './Messages-log-entry.module.scss';
 
 export function MessagesLogEntry(
     props: {
@@ -19,10 +20,10 @@ export function MessagesLogEntry(
     const formattedPayload = props.message.payload.map((n) => numberToHex(n)).join(' ');
     return (
         <>
-            <div>{formattedDate}</div>
+            <div className={styles.timestampCell}>{formattedDate}</div>
             <div>{formattedDirection}</div>
             <div>{MessageType[props.message.messageType]}</div>
-            <div>{formattedPayload}</div>
+            <div className={styles.rawValueCell}>{formattedPayload}</div>
         </>
     );
 }
