@@ -1,17 +1,20 @@
-import { ReactElement, useCallback, useEffect, useState } from 'react';
+import { ReactElement, useCallback, useEffect, useRef, useState } from 'react';
 import { container } from 'tsyringe';
-import { IHub, connectHub } from 'rxpoweredup';
+import { IHub, LogLevel, connectHub } from 'rxpoweredup';
 
 import styles from './App.module.scss';
 import { Nav } from '../nav';
-import { BluetoothAvailability, HubConnectionState, NAVIGATOR } from '../types';
+import { BluetoothAvailability, HubConnectionState, NAVIGATOR, WINDOW } from '../types';
 import { RouterOutlet } from './Router-outlet';
 import { BluetoothUnavailableNotification } from '../common';
-import { useHubStore } from '../store';
+import { MessageDirection, useHubStore } from '../store';
+import { StoreMessageMiddleware } from './store-message-middleware';
+import { MessagesLog } from './Messages-log';
 
 export function App(
     _: unknown,
     __: unknown,
+    window: Window = container.resolve(WINDOW),
     navigator: Navigator = container.resolve(NAVIGATOR),
 ): ReactElement {
     const [ hub, setHub ] = useState<IHub | undefined>(undefined);
@@ -19,6 +22,10 @@ export function App(
     const setBluetoothAvailability = useHubStore((state) => state.setBluetoothAvailability);
     const hubConnection = useHubStore((state) => state.hubConnection);
     const setHubConnectionState = useHubStore((state) => state.setHubConnection);
+    const onHubDisconnect = useHubStore((state) => state.onHubDisconnect);
+    const addMessageLogEntry = useHubStore((state) => state.addMessagesLogEntry);
+    const inboundLoggingMiddleware = useRef(new StoreMessageMiddleware(addMessageLogEntry, MessageDirection.Inbound, window));
+    const outboundLoggingMiddleware = useRef(new StoreMessageMiddleware(addMessageLogEntry, MessageDirection.Outbound, window));
 
     useEffect(() => {
         if (!isBluetoothAvailable) {
@@ -32,13 +39,29 @@ export function App(
         }
     }, [ isBluetoothAvailable, setBluetoothAvailability, navigator.bluetooth ]);
 
+    useEffect(() => {
+        if (hub) {
+            hub.disconnected.subscribe(() => {
+                onHubDisconnect();
+                setHub(undefined);
+            });
+        }
+    }, [ hub, setHub, onHubDisconnect ]);
+
     const connect = useCallback(() => {
         if (hubConnection !== HubConnectionState.Disconnected) {
             throw new Error('Cannot connect when already connected or connecting.');
         }
         setHub(undefined);
         setHubConnectionState(HubConnectionState.Connecting);
-        connectHub(navigator.bluetooth).subscribe({
+        connectHub(
+            navigator.bluetooth,
+            {
+                incomingMessageMiddleware: [ inboundLoggingMiddleware.current ],
+                outgoingMessageMiddleware: [ outboundLoggingMiddleware.current ],
+                logLevel: LogLevel.Debug
+            }
+        ).subscribe({
             next: (connectedHub) => {
                 setHub(connectedHub);
                 setHubConnectionState(HubConnectionState.Connected);
@@ -52,13 +75,8 @@ export function App(
             throw new Error('Cannot disconnect when not connected.');
         }
         setHubConnectionState(HubConnectionState.Disconnecting);
-        hub?.disconnect().subscribe({
-            complete: () => {
-                setHubConnectionState(HubConnectionState.Disconnected);
-                setHub(undefined);
-            },
-        });
-    }, [ hubConnection, setHubConnectionState, setHub, hub ]);
+        hub?.disconnect().subscribe();
+    }, [ hubConnection, setHubConnectionState, hub ]);
 
     switch (isBluetoothAvailable) {
         case BluetoothAvailability.Unknown:
@@ -79,6 +97,12 @@ export function App(
                     <main className={styles.main}>
                         <RouterOutlet hub={hub}/>
                     </main>
+                    {
+                        hub &&
+                        <footer className={styles.messagesFooter}>
+                            <MessagesLog/>
+                        </footer>
+                    }
                 </>
             );
         case BluetoothAvailability.Unavailable:

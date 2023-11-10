@@ -6,12 +6,16 @@ import {
     AttachedIoAttachInboundMessage,
     HubType,
     IOType,
+    MessageType,
     PortModeInboundMessage,
     PortModeInformationInboundMessage,
-    PortModeInformationType
+    PortModeInformationType,
+    RawMessage
 } from 'rxpoweredup';
 
 import { BluetoothAvailability, HubConnectionState } from '../types';
+
+const MAX_MESSAGE_LOG_SIZE = 100;
 
 export function hashPortIdModeId(portId: number, modeId: number): string {
     return `${portId}-${modeId}`;
@@ -64,8 +68,22 @@ export type HubPropertiesState = {
     primaryMacAddress?: string;
 };
 
+export enum MessageDirection {
+    Inbound,
+    Outbound
+}
+
+export type MessageLogEntry = {
+    id: string;
+    messageType: MessageType;
+    direction: MessageDirection;
+    payload: number[];
+    timestamp: number;
+};
+
 export type HubStore = {
     isBluetoothAvailable: BluetoothAvailability;
+    messagesLog: MessageLogEntry[];
     hubConnection: HubConnectionState;
     hubProperties: HubPropertiesState;
     ports: {
@@ -86,12 +104,14 @@ export type HubStore = {
     processPortModeInformationMessage(message: PortModeInformationInboundMessage): void;
     processPortModeInformationRequestError(portId: number, modeId: number, infoType: PortModeInformationType, error: Error): void;
     processPortRawValue(portId: number, modeId: number, rawValue: number[]): void;
-    onHubDisconnect: () => void;
+    addMessagesLogEntry(direction: MessageDirection, message: RawMessage<MessageType>, id: string): void;
+    onHubDisconnect(): void;
 };
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const useHubStore = create<HubStore>((set) => ({
     isBluetoothAvailable: BluetoothAvailability.Unknown,
+    messagesLog: [],
     hubConnection: HubConnectionState.Disconnected,
     hubProperties: {},
     ports: {},
@@ -250,13 +270,38 @@ export const useHubStore = create<HubStore>((set) => ({
             };
         });
     },
+    addMessagesLogEntry(
+        direction: MessageDirection,
+        message: RawMessage<MessageType>,
+        id: string
+    ): void {
+        set((state) => {
+            const messagesLog = [ ...state.messagesLog ];
+            if (messagesLog.length > MAX_MESSAGE_LOG_SIZE) {
+                messagesLog.splice(0, messagesLog.length - MAX_MESSAGE_LOG_SIZE);
+            }
+            messagesLog.push({
+                messageType: message.header.messageType,
+                direction,
+                payload: [ ...message.payload ],
+                timestamp: Date.now(),
+                id
+            });
+            return {
+                ...state,
+                messagesLog
+            };
+        });
+    },
     onHubDisconnect: (): void => {
         return set((state) => {
             return {
                 ...state,
                 hubConnection: HubConnectionState.Disconnected,
                 ports: {},
-                portModes: {}
+                portModes: {},
+                portModeInfo: {},
+                messagesLog: []
             };
         });
     }
