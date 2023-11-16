@@ -1,1 +1,1 @@
-export * from './Motors-page.tsx';
+export * from './Motor-page.tsx';

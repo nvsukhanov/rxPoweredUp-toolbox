@@ -1,4 +1,5 @@
-import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
+import { StateCreator, create } from 'zustand';
 import {
     AttachIoEvent,
     AttachedIOAttachVirtualInboundMessage,
@@ -82,6 +83,11 @@ export type MessageLogEntry = {
     timestamp: number;
 };
 
+export type PortValuesState = {
+    rawValue?: number[];
+    parsedValue?: string;
+};
+
 export type HubStore = {
     isBluetoothAvailable: BluetoothAvailability;
     messagesLog: MessageLogEntry[];
@@ -95,6 +101,9 @@ export type HubStore = {
     };
     portModeInfo: {
         [hash in string]: PortModeInfoState;
+    };
+    portValues: {
+        [hash in string]: PortValuesState;
     };
     sensorsData: {
         voltage?: number;
@@ -110,6 +119,7 @@ export type HubStore = {
     processPortModeInformationMessage(message: PortModeInformationInboundMessage): void;
     processPortModeInformationRequestError(portId: number, modeId: number, infoType: PortModeInformationType, error: Error): void;
     processPortRawValue(portId: number, modeId: number, rawValue: number[]): void;
+    processPortValue(portId: number, modeId: number, parsedValue: string): void;
     addMessagesLogEntry(direction: MessageDirection, message: RawMessage<MessageType>, id: string): void;
     updateSensorVoltage(voltage?: number): void;
     updateSensorTemperature(temperature?: number): void;
@@ -118,7 +128,7 @@ export type HubStore = {
 };
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export const useHubStore = create<HubStore>((set) => ({
+export const useHubStore = create<HubStore>(devtools((set) => ({
     isBluetoothAvailable: BluetoothAvailability.Unknown,
     messagesLog: [],
     hubConnection: HubConnectionState.Disconnected,
@@ -126,6 +136,7 @@ export const useHubStore = create<HubStore>((set) => ({
     ports: {},
     portModes: {},
     portModeInfo: {},
+    portValues: {},
     setHubProperty<K extends keyof HubPropertiesState>(key: K, value: HubPropertiesState[K]): void {
         set((state) => {
             return {
@@ -209,13 +220,26 @@ export const useHubStore = create<HubStore>((set) => ({
         set((state) => {
             return {
                 ...state,
-                portModeInfo: {
-                    ...state.portModeInfo,
+                portValues: {
+                    ...state.portValues,
                     [hash]: {
-                        ...(state.portModeInfo[hash] || { modeInfo: {} }),
-                        portId,
-                        modeId,
+                        ...(state.portValues[hash] ?? {}),
                         rawValue,
+                    }
+                }
+            };
+        });
+    },
+    processPortValue(portId: number, modeId: number, parsedValue: string): void {
+        const hash = hashPortIdModeId(portId, modeId);
+        set((state) => {
+            return {
+                ...state,
+                portValues: {
+                    ...state.portValues,
+                    [hash]: {
+                        ...(state.portValues[hash] ?? {}),
+                        parsedValue,
                     }
                 }
             };
@@ -348,4 +372,4 @@ export const useHubStore = create<HubStore>((set) => ({
             };
         });
     }
-}));
+})) as StateCreator<HubStore>);

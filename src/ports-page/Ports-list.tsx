@@ -1,29 +1,35 @@
-import { ReactElement } from 'react';
-import { PortModeInformationType } from 'rxpoweredup';
+import { ReactElement, useCallback } from 'react';
+import { IHub } from 'rxpoweredup';
+import { useShallow } from 'zustand/react/shallow';
 
-import { PhysicalPortState, PortModeInfoState, PortModeState, VirtualPortState } from '../store';
+import { PhysicalPortState, useHubStore } from '../store';
 import { PhysicalPort } from './Physical-port';
+import { HubNotConnectedNotification } from '../common';
 
 export function PortsList(
     props: {
-        physicalPorts: PhysicalPortState[];
-        virtualPorts: VirtualPortState[];
-        portModeDataRecord: Record<number, PortModeState>;
-        portModeInfoRecord: Record<string, PortModeInfoState>;
-        onPortModesRequest: (portId: number) => void;
-        onPortModeIdGetInfoRequest: (portId: number, modeId: number, infoType: PortModeInformationType) => void;
-        onPortModeIdRawValueReadRequest: (portId: number, modeId: number) => void;
+        hub: IHub;
     }
 ): ReactElement {
-    const physicalPortElements: ReactElement[] = props.physicalPorts.map((port: PhysicalPortState) => {
+    const ports = useHubStore(useShallow((state) => state.ports));
+    const physicalPorts = Object.values(ports).filter((port): port is PhysicalPortState => port.isPhysical);
+
+    const processPortModeMessage = useHubStore((state) => state.processPortModeMessage);
+
+    const handlePortModesRequest = useCallback((portId: number): void => {
+        props.hub?.ports.getPortModes(portId).subscribe((r) => processPortModeMessage(r));
+    }, [ props.hub, processPortModeMessage ]);
+
+    if (!props.hub) {
+        return (<HubNotConnectedNotification/>);
+    }
+
+    const physicalPortElements: ReactElement[] = physicalPorts.map((port: PhysicalPortState) => {
         return (
             <li key={port.portId}>
-                <PhysicalPort port={port}
-                              onHandlePortModesRequest={(): void => props.onPortModesRequest(port.portId)}
-                              portModeData={props.portModeDataRecord[port.portId]}
-                              portModeInfoRecord={props.portModeInfoRecord}
-                              onPortModeIdRawValueReadRequest={props.onPortModeIdRawValueReadRequest}
-                              onPortModeIdGetInfoRequest={props.onPortModeIdGetInfoRequest}
+                <PhysicalPort hub={props.hub}
+                              port={port}
+                              onHandlePortModesRequest={(): void => handlePortModesRequest(port.portId)}
                 />
             </li>
         );
