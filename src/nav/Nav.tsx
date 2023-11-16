@@ -33,11 +33,6 @@ export function Nav(
             >
                 Motors
             </NavLink>,
-            <NavLink to={ROUTES.sensors}
-                     className={({ isActive }): string => isActive ? styles.activeLinkItem : ''}
-            >
-                Sensors
-            </NavLink>
         );
     } else {
         navItems.push(

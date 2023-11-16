@@ -1,17 +1,20 @@
 import { Fragment, ReactElement } from 'react';
 import { PortModeInformationType } from 'rxpoweredup';
+import { useShallow } from 'zustand/react/shallow';
 
-import { PortModeInfoState } from '../store';
+import { PortModeInfoState, hashPortIdModeId, useHubStore } from '../store';
 import styles from './Output-port-mode-id.module.scss';
 import { PORT_MODE_INFORMATION_TYPES_LIST } from './port-mode-information-types-list';
 
 export function OutputPortModeId(
     props: {
+        portId: number;
         modeId: number;
-        data?: PortModeInfoState;
         onPortModeIdGetInfoRequest: (infoType: PortModeInformationType) => void;
     }
 ): ReactElement {
+    const portModeInfo: PortModeInfoState | undefined = useHubStore(useShallow((state) => state.portModeInfo[hashPortIdModeId(props.portId, props.modeId)]));
+
     return (
         <section>
             <section className={styles.modeIdHeader}>
@@ -26,8 +29,8 @@ export function OutputPortModeId(
                             <Fragment key={infoType}>
                                 <dd>{PortModeInformationType[infoType]}</dd>
                                 <dt>{
-                                    props.data?.modeInfo[infoType]
-                                    ? <>{JSON.stringify(props.data?.modeInfo[infoType] || null, null, 2)}</>
+                                    portModeInfo?.modeInfo[infoType]
+                                    ? <>{JSON.stringify(portModeInfo.modeInfo[infoType] || null, null, 2)}</>
                                     : <button onClick={(): void => props.onPortModeIdGetInfoRequest(infoType)}>Get</button>
                                 }</dt>
                             </Fragment>
