@@ -1,5 +1,4 @@
 import { ReactElement, useCallback, useEffect, useRef, useState } from 'react';
-import { container } from 'tsyringe';
 import { IHub, LogLevel, connectHub } from 'rxpoweredup';
 
 import styles from './App.module.scss';
@@ -10,13 +9,11 @@ import { BluetoothUnavailableNotification } from '../common';
 import { MessageDirection, useHubStore } from '../store';
 import { StoreMessageMiddleware } from './store-message-middleware';
 import { MessagesLog } from './Messages-log';
+import { useInject } from '../di';
 
-export function App(
-    _: unknown,
-    __: unknown,
-    window: Window = container.resolve(WINDOW),
-    navigator: Navigator = container.resolve(NAVIGATOR),
-): ReactElement {
+export function App(): ReactElement {
+    const window = useInject(WINDOW);
+    const navigator = useInject(NAVIGATOR);
     const [ hub, setHub ] = useState<IHub | undefined>(undefined);
     const isBluetoothAvailable = useHubStore((state) => state.isBluetoothAvailable);
     const setBluetoothAvailability = useHubStore((state) => state.setBluetoothAvailability);
