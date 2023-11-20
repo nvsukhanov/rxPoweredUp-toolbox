@@ -30,6 +30,7 @@ export function InputPortModeId(
         { name: 'absolute position', transformer: ValueTransformers.absolutePosition },
         { name: 'tilt', transformer: ValueTransformers.tilt },
         { name: 'position', transformer: ValueTransformers.position },
+        { name: 'color', transformer: ValueTransformers.color },
     ];
     if (hubType !== undefined) {
         transformers.push({ name: 'voltage', transformer: ValueTransformers.voltage(hubType) });
